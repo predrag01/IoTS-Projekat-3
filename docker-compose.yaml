@@ -1,0 +1,113 @@
+version: '3.1'
+
+services:
+  postgres:
+    image: postgres
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    networks:
+      - IoTS-Project2
+      
+  pg4admin:
+    image: dpage/pgadmin4
+    container_name: pg4admin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: 123
+    ports:
+      - "5050:80"
+    networks:
+      - IoTS-Project2
+    depends_on:
+      - postgres
+      
+   sensor:
+    image: sensor
+    container_name: sensor
+    networks:
+      - IoTS-Project2
+    depends_on:
+      - postgres
+    
+    mosquitto:
+    image: eclipse-mosquitto
+    container_name: mosquitto
+    ports:
+        - "8883:8883"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+    networks:
+      - IoTS-Project2
+      
+    nats:
+    image: nats:latest
+    container_name: nats
+    ports:
+      - "4222:4222"
+    networks:
+      - IoTS-Project2
+      
+    filter:
+    image: filter
+    container_name: filter
+    networks:
+      - IoTS-Project2
+    depends_on:
+      - mosquitto
+      - nats
+      
+    dashboard:
+    image: dashboard
+    container_name: dashboard
+    networks:
+      - IoTS-Project2
+    depends_on:
+      - nats
+      
+    manager:
+    image: emqx/ekuiper-manager:1.8.0
+    container_name: manager
+    ports:
+      - "9082:9082"
+    restart: unless-stopped
+    volumes:
+      - /tmp/manager_data:/ekuiper-manager/data
+    environment:
+      DEFAULT_EKUIPER_ENDPOINT: "http://ekuiper:9081" 
+    networks:
+      - IoTS-Project2
+    
+    ekuiper:
+    image: lfedge/ekuiper:1.8.0
+    ports:
+      - "9081:9081"
+    container_name: ekuiper
+    hostname: ekuiper
+    restart: unless-stopped
+    user: root
+    volumes:
+      - /tmp/data:/kuiper/data
+      - /tmp/log:/kuiper/log
+    environment:
+      MQTT_SOURCE__DEFAULT__SERVER: "tcp://mosquitto:8883"
+      KUIPER__BASIC__CONSOLELOG: "true"
+      KUIPER__BASIC__IGNORECASE: "false"
+    networks:
+      - IoTS-Project2
+      
+    command:
+    image: command
+    container_name: command
+    networks:
+      - IoTS-Project2
+    depends_on:
+      - mosquitto
+  
+networks:
+  IoTS-Project2:
+    driver: bridge
