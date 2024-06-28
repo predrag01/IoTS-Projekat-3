@@ -1,0 +1,143 @@
+<!-- index.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stress Monitor</title>
+    <style>
+        .container {
+            width: 70%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            margin: 20px;
+        }
+
+        .stress-low {
+            background-color: #d0ffd0;
+        }
+
+        .stress-high {
+            background-color: #ffd0d0;
+        }
+
+        .value {
+            font-weight: bold;
+        }
+
+        .message {
+            margin-top: 10px;
+            padding: 5px;
+            border: 1px solid #e0e0e0;
+            background-color: #f9f9f9;
+        }
+
+        .message-header {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .message-content {
+            font-family: 'Courier New', Courier, monospace;
+            white-space: pre-wrap;
+        }
+        .prop {
+            margin: 0 0 0 0;
+            padding: 0 0 0 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="message-container"></div>
+    <div class="container" id="dataContainer">
+        <h1>Stress State Monitor</h1>
+        <div id="stressState">Stress State: <span id="stressValue" class="value"></span></div>
+        <div id="details"></div>
+        <div id="previousMessages"></div>
+    </div>
+
+    <script>
+        // const socket = new WebSocket('ws://command_server:8888/'); 
+        const socket = new WebSocket('ws://command_server:8080'); 
+        // const socket = new WebSocket('ws://localhost:8080/');
+        socket.onopen = () => {
+            console.log('WebSocket connected');
+        };
+
+        socket.onmessage = (event) => {
+            // const messageContainer = document.getElementById('message-container');
+            // const newMessage = document.createElement('div');
+            // newMessage.innerText = event.data;
+            // messageContainer.appendChild(newMessage);
+            const data = JSON.parse(event.data);
+            console.log('Message from server:', data);
+
+            const stressValueSpan = document.getElementById('stressValue');
+            const stressStateDiv = document.getElementById('stressState');
+            const detailsDiv = document.getElementById('details');
+            const previousMessagesDiv = document.getElementById('previousMessages');
+
+            if (data && typeof data === 'object' && 'stresState' in data) {
+                stressValueSpan.textContent = data.stresState;
+
+                if (data.stresState > 1) {
+                    stressStateDiv.className = 'stress-high';
+                } else {
+                    stressStateDiv.className = 'stress-low';
+                }
+
+                detailsDiv.innerHTML = `
+          <div class="message">
+            <div class="message-header">Current Stress State Details:</div>
+            <div class="message-content">
+              <div class="prop">Snoring Range: ${data.snoringRange}</div>
+              <div class="prop">Respiration Rate: ${data.respirationRate}</div>
+              <div class="prop">Body Temperature: ${data.bodyTemperature}</div>
+              <div class="prop">Limb Movement: ${data.limbMovement}</div>
+              <div class="prop">Blood Oxygen: ${data.bloodOxygen}</div>
+              <div class="prop">REM: ${data.rem}</div>
+              <div class="prop">Hours Sleeping: ${data.hoursSleeping}</div>
+              <div class="prop">Heart Rate: ${data.heartRate}</div>
+              <div class="prop">Stress State: ${data.stresState}</div>
+            </div>
+          </div>
+        `;
+
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('message');
+                messageDiv.innerHTML = `
+          <div class="message-header">Previous Message:</div>
+          <div class="message-content">
+            <div>Snoring Range: ${data.snoringRange}</div>
+            <div>Respiration Rate: ${data.respirationRate}</div>
+            <div>Body Temperature: ${data.bodyTemperature}</div>
+            <div>Limb Movement: ${data.limbMovement}</div>
+            <div>Blood Oxygen: ${data.bloodOxygen}</div>
+            <div>REM: ${data.rem}</div>
+            <div>Hours Sleeping: ${data.hoursSleeping}</div>
+            <div>Heart Rate: ${data.heartRate}</div>
+            <div>Stress State: ${data.stresState}</div>
+          </div>
+        `;
+                previousMessagesDiv.prepend(messageDiv); 
+            } else {
+                stressValueSpan.textContent = 'Unknown';
+                stressStateDiv.className = 'stress-low';
+                detailsDiv.textContent = 'Received message: ' + JSON.stringify(data, null, 2);
+            }
+        };
+
+        socket.onclose = () => {
+            console.log('WebSocket closed');
+        };
+
+        socket.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
+    </script>
+</body>
+
+</html>

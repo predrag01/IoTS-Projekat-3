@@ -70,6 +70,39 @@ services:
       - nats
       - filter
       
+    influxdb:
+    image: influxdb:2.0
+    container_name: influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE: setup
+      - DOCKER_INFLUXDB_INIT_USERNAME: user
+      - DOCKER_INFLUXDB_INIT_PASSWORD: weather1234
+      - DOCKER_INFLUXDB_INIT_ORG: weather.org
+      - DOCKER_INFLUXDB_INIT_BUCKET: weather_data
+      - DOCKER_INFLUXDB_INIT_RETENTION: 30d
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: mytoken
+    volumes:
+      - ./influxdb_data:/var/lib/influxdb2
+    networks:
+      - IoTS-Project2
+      
+    grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - INFLUXDB_URL: http://influxdb:8086
+      - INFLUXDB_ORG: weather.org
+      - INFLUXDB_BUCKET: weather_data
+      - GF_INFLUXDB_TOKEN: mytoken
+      - GF_LOG_LEVEL: debug
+      - GF_SECURITY_ADMIN_PASSWORD: admin
+    networks:
+      - IoTS-Project2
+      
     manager:
     image: emqx/ekuiper-manager:1.8.0
     container_name: manager
@@ -79,7 +112,9 @@ services:
     volumes:
       - /tmp/manager_data:/ekuiper-manager/data
     environment:
-      DEFAULT_EKUIPER_ENDPOINT: "http://ekuiper:9081" 
+      DEFAULT_EKUIPER_ENDPOINT: "http://ekuiper:9081"
+    depends_on:
+      - mosquitto
     networks:
       - IoTS-Project2
     
@@ -98,16 +133,35 @@ services:
       MQTT_SOURCE__DEFAULT__SERVER: "tcp://mosquitto:8883"
       KUIPER__BASIC__CONSOLELOG: "true"
       KUIPER__BASIC__IGNORECASE: "false"
+    depends_on:
+      - mosquitto
     networks:
       - IoTS-Project2
       
-    command:
-    image: command
-    container_name: command
+    fakeEkuiper:
+    image: fake-ekuiper
+    container_name: fake-ekuiper
     networks:
       - IoTS-Project2
     depends_on:
       - mosquitto
+      - sensor
+      
+    command_server:
+    image: command_image
+    container_name: command_server
+    ports:
+      - "8888:8080"
+    networks:
+      - IoTS-Project2
+      
+    web_page:
+    image: web_page
+    container_name: web_page
+    ports:
+      - "80:80"
+    networks:
+      - IoTS-Project2
   
 networks:
   IoTS-Project2:
